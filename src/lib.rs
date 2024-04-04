@@ -13,8 +13,8 @@ pub fn is_admin() -> bool {
 
 /// 以管理员身份运行当前进程。
 pub fn run_as_admin() -> Result<(), Error> {
-    let exe = std::env::current_exe()
-        .unwrap()
+    let exe = std::env::current_exe().map_err(|_| Error::CannotGetExePath)?;
+    let exe = exe
         .as_os_str()
         .encode_wide()
         .chain(std::iter::once(0))
@@ -31,7 +31,7 @@ pub fn run_as_admin() -> Result<(), Error> {
     match unsafe { ShellExecuteExW(&mut sei) } {
         Ok(_) => Ok(()),
         Err(e) => Err(Error::ShellExecuteExWFailed {
-            error_code: e.code().0,
+            error_code: e.code().0 as u32,
         }),
     }
 }
@@ -48,5 +48,7 @@ pub fn rerun_as_admin_if_not_admin() -> Result<(), Error> {
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     #[error("ShellExecuteExW failed, error code: 0x{error_code:X}")]
-    ShellExecuteExWFailed { error_code: i32 },
+    ShellExecuteExWFailed { error_code: u32 },
+    #[error("Cannot get the path of the executable file")]
+    CannotGetExePath,
 }
